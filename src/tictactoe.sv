@@ -6,6 +6,17 @@ module tictactoe #(
     input  wire       clk,
     input  wire       rst_n
 );
+  // --- Shared Prescaler ---
+  localparam TICK_HZ = 1000;
+  wire tick_en;
+  prescaler #(
+      .CLK_FREQ(CLK_FREQ),
+      .TICK_HZ (TICK_HZ)
+  ) main_prescaler (
+      .clk(clk),
+      .rst_n(rst_n),
+      .tick_en(tick_en)
+  );
 
   // --- Constants and State Definitions ---
   localparam IDLE = 2'b00, P1_TURN = 2'b01, P2_TURN = 2'b10, GAME_OVER = 2'b11;
@@ -13,19 +24,19 @@ module tictactoe #(
 
   // --- Win Condition Masks (Hardcoded for 3x3) ---
   localparam [71:0] WIN_MASKS = {
-      9'b001010100,  // Diag 2
-      9'b100010001,  // Diag 1
-      9'b100100100,  // Col 2
-      9'b010010010,  // Col 1
-      9'b001001001,  // Col 0
-      9'b111000000,  // Row 2
-      9'b000111000,  // Row 1
-      9'b000000111   // Row 0
+    9'b001010100,  // Diag 2
+    9'b100010001,  // Diag 1
+    9'b100100100,  // Col 2
+    9'b010010010,  // Col 1
+    9'b001001001,  // Col 0
+    9'b111000000,  // Row 2
+    9'b000111000,  // Row 1
+    9'b000000111  // Row 0
   };
 
   // --- Board and Game State Registers ---
   reg [8:0] board_p1_q, board_p2_q;
-  reg  [8:0] win_mask_q;
+  reg        winner_is_p1_q;
   reg        is_draw_q;
 
   // --- Button Handling ---
@@ -34,18 +45,20 @@ module tictactoe #(
 
   button_handler #(
       .NUM_BUTTONS(9),
-      .CLK_FREQ(CLK_FREQ)
+      .TICK_HZ(TICK_HZ)
   ) btn_handler (
       .clk(clk),
       .rst_n(rst_n),
+      .tick_en(tick_en),
       .buttons_raw(buttons_raw),
       .move_valid(move_valid),
       .move_idx(move_idx)
   );
 
   // --- Animation and UI Timers ---
-  localparam ONE_SECOND_CYCLES = CLK_FREQ;
-  localparam ANIM_BITS = $clog2(ONE_SECOND_CYCLES);
+  localparam ANIM_DURATION_MS = 1000;
+  localparam ANIM_TICKS = (ANIM_DURATION_MS * TICK_HZ) / 1000;
+  localparam ANIM_BITS = $clog2(ANIM_TICKS + 1);
   reg [ANIM_BITS-1:0] anim_timer_q;
   reg [          3:0] anim_target_idx_q;
   reg                 anim_is_error_q;
@@ -53,6 +66,8 @@ module tictactoe #(
   // --- Next Board State Calculation Logic ---
   wire p1_wins, p2_wins, is_full;
   logic [8:0] p1_win_mask_w, p2_win_mask_w;
+  logic [8:0] win_mask_w;
+  assign win_mask_w = winner_is_p1_q ? p1_win_mask_w : p2_win_mask_w;
   logic [8:0] next_board_p1, next_board_p2;
 
   always_comb begin
@@ -74,8 +89,10 @@ module tictactoe #(
     p1_win_mask_w = '0;
     p2_win_mask_w = '0;
     for (int i = 0; i < 8; i++) begin
-      if ((next_board_p1 & WIN_MASKS[i*9 +: 9]) == WIN_MASKS[i*9 +: 9]) p1_win_mask_w = WIN_MASKS[i*9 +: 9];
-      if ((next_board_p2 & WIN_MASKS[i*9 +: 9]) == WIN_MASKS[i*9 +: 9]) p2_win_mask_w = WIN_MASKS[i*9 +: 9];
+      if ((next_board_p1 & WIN_MASKS[i*9+:9]) == WIN_MASKS[i*9+:9])
+        p1_win_mask_w = WIN_MASKS[i*9+:9];
+      if ((next_board_p2 & WIN_MASKS[i*9+:9]) == WIN_MASKS[i*9+:9])
+        p2_win_mask_w = WIN_MASKS[i*9+:9];
     end
   end
 
@@ -89,20 +106,20 @@ module tictactoe #(
       state_q <= IDLE;
       board_p1_q <= '0;
       board_p2_q <= '0;
-      win_mask_q <= '0;
+      winner_is_p1_q <= 1'b0;
       is_draw_q <= 1'b0;
       anim_timer_q <= '0;
     end else begin
-      // Decrement animation timer automatically
-      if (anim_timer_q > 0) begin
-        anim_timer_q <= anim_timer_q - 1;
+      // Decrement animation timer automatically on tick
+      if (tick_en && anim_timer_q > 0) begin
+        anim_timer_q <= anim_timer_q - 1'b1;
       end
 
       case (state_q)
         IDLE: begin
           if (move_valid) begin
             board_p1_q <= next_board_p1;
-            anim_timer_q <= CLK_FREQ;
+            anim_timer_q <= ANIM_BITS'(ANIM_TICKS);
             anim_target_idx_q <= move_idx;
             anim_is_error_q <= 1'b0;
             state_q <= P2_TURN;
@@ -114,13 +131,13 @@ module tictactoe #(
             // Check if cell is empty
             if ((board_p1_q[move_idx] | board_p2_q[move_idx]) == 1'b0) begin
               board_p1_q <= next_board_p1;
-              anim_timer_q <= ONE_SECOND_CYCLES;
+              anim_timer_q <= ANIM_BITS'(ANIM_TICKS);
               anim_target_idx_q <= move_idx;
               anim_is_error_q <= 1'b0;
 
               if (p1_wins) begin
                 state_q <= GAME_OVER;
-                win_mask_q <= p1_win_mask_w;
+                winner_is_p1_q <= 1'b1;
               end else if (is_full) begin
                 state_q   <= GAME_OVER;
                 is_draw_q <= 1'b1;
@@ -128,7 +145,7 @@ module tictactoe #(
                 state_q <= P2_TURN;
               end
             end else begin  // Cell occupied, trigger error
-              anim_timer_q <= ONE_SECOND_CYCLES;
+              anim_timer_q <= ANIM_BITS'(ANIM_TICKS);
               anim_target_idx_q <= move_idx;
               anim_is_error_q <= 1'b1;
             end
@@ -139,13 +156,13 @@ module tictactoe #(
           if (move_valid) begin
             if ((board_p1_q[move_idx] | board_p2_q[move_idx]) == 1'b0) begin
               board_p2_q <= next_board_p2;
-              anim_timer_q <= ONE_SECOND_CYCLES;
+              anim_timer_q <= ANIM_BITS'(ANIM_TICKS);
               anim_target_idx_q <= move_idx;
               anim_is_error_q <= 1'b0;
 
               if (p2_wins) begin
                 state_q <= GAME_OVER;
-                win_mask_q <= p2_win_mask_w;
+                winner_is_p1_q <= 1'b0;
               end else if (is_full) begin
                 state_q   <= GAME_OVER;
                 is_draw_q <= 1'b1;
@@ -153,7 +170,7 @@ module tictactoe #(
                 state_q <= P1_TURN;
               end
             end else begin
-              anim_timer_q <= ONE_SECOND_CYCLES;
+              anim_timer_q <= ANIM_BITS'(ANIM_TICKS);
               anim_target_idx_q <= move_idx;
               anim_is_error_q <= 1'b1;
             end
@@ -166,7 +183,7 @@ module tictactoe #(
             state_q <= IDLE;
             board_p1_q <= '0;
             board_p2_q <= '0;
-            win_mask_q <= '0;
+            winner_is_p1_q <= 1'b0;
             is_draw_q <= 1'b0;
           end
         end
@@ -179,11 +196,13 @@ module tictactoe #(
   reg  [2:0] preset_sel  [0:8];
 
   blinker_timer #(
-      .CLK_FREQ(CLK_FREQ)
+      .TICK_HZ(TICK_HZ),
+      .STEP_MS(50)
   ) shared_timer (
-      .clk  (clk),
+      .clk(clk),
       .rst_n(rst_n),
-      .step (master_step)
+      .tick_en(tick_en),
+      .step(master_step)
   );
 
   always_comb begin
@@ -202,7 +221,7 @@ module tictactoe #(
             if (3'(i) == master_step[2:0]) preset_sel[i] = 3'd1;
           end
           GAME_OVER: begin
-            if (win_mask_q[i]) begin  // Winning line blinks fast
+            if (win_mask_w[i]) begin  // Winning line blinks fast
               preset_sel[i] = 3'd3;
             end else if (board_p1_q[i]) begin  // P1 pieces are solid
               preset_sel[i] = 3'd1;

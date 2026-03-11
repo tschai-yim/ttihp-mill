@@ -1,18 +1,18 @@
 module debouncer #(
     parameter NUM_BUTTONS    = 9,
-    parameter CLK_FREQ       = 10_000_000,
-    parameter SAMPLE_RATE_MS = 5,           // Sample every 5ms,
-    parameter HISTORY_SIZE   = 8
+    parameter TICK_HZ        = 1000,
+    parameter SAMPLE_RATE_MS = 5,     // Sample every 5ms
+    parameter HISTORY_SIZE   = 4
 ) (
     input  wire                   clk,
     input  wire                   rst_n,
-    input  wire [NUM_BUTTONS-1:0] btn_in,  // The raw, bouncy inputs
-    output reg  [NUM_BUTTONS-1:0] btn_out  // The clean outputs
+    input  wire                   tick_en,
+    input  wire [NUM_BUTTONS-1:0] btn_in,   // The raw, bouncy inputs
+    output reg  [NUM_BUTTONS-1:0] btn_out   // The clean outputs
 );
 
-  // Calculate clock cycles for debounce time
-  localparam TICK_CYCLES = (CLK_FREQ / 1000) * SAMPLE_RATE_MS;
-  localparam BITS = $clog2(TICK_CYCLES);
+  localparam TICK_TICKS = (SAMPLE_RATE_MS * TICK_HZ) / 1000;
+  localparam BITS = $clog2(TICK_TICKS);
 
   reg [BITS-1:0] tick_counter;
   // An array of shift registers to hold button history
@@ -27,8 +27,8 @@ module debouncer #(
       for (i = 0; i < NUM_BUTTONS; i = i + 1) begin
         history[i] <= 'b0;
       end
-    end else begin
-      if (tick_counter == BITS'(TICK_CYCLES - 1)) begin
+    end else if (tick_en) begin
+      if (tick_counter >= BITS'(TICK_TICKS - 1)) begin
         tick_counter <= 0;
 
         for (i = 0; i < NUM_BUTTONS; i = i + 1) begin

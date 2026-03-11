@@ -1,9 +1,10 @@
 module button_handler #(
     parameter NUM_BUTTONS = 9,
-    parameter CLK_FREQ = 10_000_000
+    parameter TICK_HZ     = 1000
 ) (
     input  wire                   clk,
     input  wire                   rst_n,
+    input  wire                   tick_en,
     input  wire [NUM_BUTTONS-1:0] buttons_raw,
     output wire                   move_valid,   // Single-cycle pulse when a button is pressed
     output wire [            3:0] move_idx      // Index of the highest-priority button pressed
@@ -15,10 +16,11 @@ module button_handler #(
 
   debouncer #(
       .NUM_BUTTONS(NUM_BUTTONS),
-      .CLK_FREQ(CLK_FREQ)
+      .TICK_HZ(TICK_HZ)
   ) btn_debouncer (
       .clk(clk),
       .rst_n(rst_n),
+      .tick_en(tick_en),
       .btn_in(buttons_raw),
       .btn_out(buttons_debounced)
   );
@@ -35,14 +37,14 @@ module button_handler #(
 
   // Combinational logic for priority encoding
   assign move_valid = |(buttons_pressed);
-  assign move_idx = buttons_pressed[8] ? 8 :
-                    buttons_pressed[7] ? 7 :
-                    buttons_pressed[6] ? 6 :
-                    buttons_pressed[5] ? 5 :
-                    buttons_pressed[4] ? 4 :
-                    buttons_pressed[3] ? 3 :
-                    buttons_pressed[2] ? 2 :
-                    buttons_pressed[1] ? 1 :
-                    buttons_pressed[0] ? 0 :
-                    '0;
+  assign move_idx = buttons_pressed[8] ? 'd8 :
+                    buttons_pressed[7] ? 'd7 :
+                    buttons_pressed[6] ? 'd6 :
+                    buttons_pressed[5] ? 'd5 :
+                    buttons_pressed[4] ? 'd4 :
+                    buttons_pressed[3] ? 'd3 :
+                    buttons_pressed[2] ? 'd2 :
+                    buttons_pressed[1] ? 'd1 :
+                    buttons_pressed[0] ? 'd0 :
+                    'd0;
 endmodule

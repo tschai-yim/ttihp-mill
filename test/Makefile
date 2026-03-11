@@ -6,7 +6,7 @@ SIM ?= icarus
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v tictactoe.sv button_handler.sv debouncer.sv blinker_timer.sv blinker_lut.sv
+PROJECT_SOURCES = project.v tictactoe.sv button_handler.sv debouncer.sv blinker_timer.sv blinker_lut.sv prescaler.sv
 
 ifneq ($(GATES),yes)
 
