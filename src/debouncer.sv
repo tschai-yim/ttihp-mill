@@ -1,6 +1,6 @@
 module debouncer #(
     parameter NUM_BUTTONS    = 9,
-    parameter CLK_FREQ       = 50_000_000,
+    parameter CLK_FREQ       = 10_000_000,
     parameter SAMPLE_RATE_MS = 5,           // Sample every 5ms,
     parameter HISTORY_SIZE   = 8
 ) (

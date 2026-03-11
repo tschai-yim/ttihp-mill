@@ -1,6 +1,6 @@
 module button_handler #(
     parameter NUM_BUTTONS = 9,
-    parameter CLK_FREQ = 50_000_000
+    parameter CLK_FREQ = 10_000_000
 ) (
     input  wire                   clk,
     input  wire                   rst_n,

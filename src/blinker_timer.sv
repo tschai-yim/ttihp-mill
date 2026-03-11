@@ -1,5 +1,5 @@
 module blinker_timer #(
-    parameter CLK_FREQ = 50_000_000,
+    parameter CLK_FREQ = 10_000_000,
     parameter STEP_MS  = 50
 ) (
     input  wire clk,

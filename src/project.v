@@ -45,7 +45,7 @@ module tt_um_tschai_yim_mill (
 `ifdef SIM
       .CLK_FREQ(1000)
 `else
-      .CLK_FREQ(50_000_000)
+      .CLK_FREQ(10_000_000)
 `endif
   ) ttt_core (
       .buttons_raw(buttons_raw),

@@ -52,7 +52,7 @@ Output:
 - **Architecture:** Synchronous digital design.
 - **Input Debouncing:** 5ms sample rate with 8-cycle history.
 - **Win Detection:** Parallel combinational logic checking all 8 win conditions.
-- **Clock:** Target 50MHz (ASIC); 1000Hz used for simulation.
+- **Clock:** Target 10MHz (ASIC); 1000Hz used for simulation.
 
 For pinout mapping and additional details, see [docs/info.md](docs/info.md).
 

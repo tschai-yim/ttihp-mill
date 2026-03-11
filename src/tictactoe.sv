@@ -1,5 +1,5 @@
 module tictactoe #(
-    parameter CLK_FREQ = 50_000_000
+    parameter CLK_FREQ = 10_000_000
 ) (
     input  wire [8:0] buttons_raw,
     output wire [8:0] display,
@@ -45,9 +45,10 @@ module tictactoe #(
 
   // --- Animation and UI Timers ---
   localparam ONE_SECOND_CYCLES = CLK_FREQ;
-  reg [25:0] anim_timer_q;
-  reg [ 3:0] anim_target_idx_q;
-  reg        anim_is_error_q;
+  localparam ANIM_BITS = $clog2(ONE_SECOND_CYCLES);
+  reg [ANIM_BITS-1:0] anim_timer_q;
+  reg [          3:0] anim_target_idx_q;
+  reg                 anim_is_error_q;
 
   // --- Next Board State Calculation Logic ---
   wire p1_wins, p2_wins, is_full;
