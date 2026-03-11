@@ -37,6 +37,8 @@ module tt_um_tschai_yim_mill (
   assign uio_out[7] = display_out[8];
   // Tie off unused mixed-use outputs to 0
   assign uio_out[6:0] = 7'b0;
+  // List all unused inputs to prevent warnings  
+  wire _unused = &{ena, uio_in[7:1], 1'b0};
 
   // --- Tic-Tac-Toe ---
   tictactoe #(
