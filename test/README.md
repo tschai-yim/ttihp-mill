@@ -1,47 +1,52 @@
-# Sample testbench for a Tiny Tapeout project
+# Tic-Tac-Toe Verification Suite
 
-This is a sample testbench for a Tiny Tapeout project. It uses [cocotb](https://docs.cocotb.org/en/stable/) to drive the DUT and check the outputs.
-See below to get started or for more information, check the [website](https://tinytapeout.com/hdl/testing/).
+This directory contains the verification environment for the Tic-Tac-Toe ASIC. It uses [cocotb](https://docs.cocotb.org/en/stable/) to drive the design and verify the outputs.
 
-## Setting up
+## Automated Verification
+The test suite in `test.py` performs sampling of the LED outputs to verify blinking patterns and game logic across multiple scenarios (Win, Draw, Reset, Illegal Moves).
 
-1. Edit [Makefile](Makefile) and modify `PROJECT_SOURCES` to point to your Verilog files.
-2. Edit [tb.v](tb.v) and replace `tt_um_example` with your module name.
-
-## How to run
-
-To run the RTL simulation:
-
-```sh
-make -B
+### How to run the automated tests:
+```bash
+make
 ```
 
-To run gatelevel simulation, first harden your project and copy `../runs/wokwi/results/final/verilog/gl/{your_module_name}.v` to `gate_level_netlist.v`.
+## Interactive Simulation
+`interactive_sim.py` provides a real-time terminal-based view of the board. It synchronizes the simulation clock with the system clock to allow for real-time interaction with the design.
 
-Then run:
-
-```sh
-make -B GATES=yes
+### How to run the interactive simulation:
+```bash
+make interactive
 ```
 
-If you wish to save the waveform in VCD format instead of FST format, edit tb.v to use `$dumpfile("tb.vcd");` and then run:
-
-```sh
-make -B FST=
+Output:
+```
+   TIC-TAC-TOE LIVE SIM         KEY MAPPING
+==========================     =============
+         █ | · | ·               1 | 2 | 3
+        ---+---+---             ---+---+---
+         · | · | █               4 | 5 | 6
+        ---+---+---             ---+---+---
+         · | · | █               7 | 8 | 9
+==========================     =============
+ Status: Game Running                  
+ Controls: [1-9] Move, [R] Reset, [Q] or Ctrl+C to Quit
 ```
 
-This will generate `tb.vcd` instead of `tb.fst`.
+## Waveforms
+The simulation generates a waveform file (`tb.fst`).
 
-## How to view the waveform file
-
-Using GTKWave
-
-```sh
+### View with GTKWave:
+```bash
 gtkwave tb.fst tb.gtkw
 ```
 
-Using Surfer
-
-```sh
+### View with Surfer:
+```bash
 surfer tb.fst
 ```
+
+## Configuration
+- **CLK_FREQ:** In simulation, the frequency is set to **1000Hz** via the `SIM` macro in `project.v`. This frequency is used for both automated and interactive simulation.
+- **I/O Mapping:** The testbench mirrors the ASIC pinout:
+  - `ui_in[7:0]` and `uio_in[0]` for buttons.
+  - `uo_out[7:0]` and `uio_out[7]` for LEDs.

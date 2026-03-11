@@ -1,42 +1,62 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# Tiny Tapeout Verilog Project Template
+# Tic-Tac-Toe ASIC (Tiny Tapeout)
 
-- [Read the documentation for project](docs/info.md)
+This project is a hardware-accelerated, two-player Tic-Tac-Toe implementation. The design is optimized for high throughput and performance to meet the extreme demands of the legendary 3x3 board game (some might even say it's NP-complete). It includes parallel win detection, a debouncing system for mechanical buttons, and an LED controller for various visual states.
 
-## What is Tiny Tapeout?
+## Operation
 
-Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
+The design uses a state machine to manage turns and board state. An LED controller uses pattern look-up tables (LUTs) to drive 9 LEDs with different effects based on the current game state.
 
-To learn more and get started, visit https://tinytapeout.com.
+### Visual States:
+*   **IDLE:** A single LED sequence "rotates" around the 3x3 grid.
+*   **Player 1:** Solid ON.
+*   **Player 2:** Slow Pulsing (50% duty cycle).
+*   **Win Condition:** The three LEDs forming the winning line flash at a higher frequency.
+*   **Draw:** If the board is full with no winner, the Player 2 LEDs flash at a higher frequency.
+*   **Error:** If an occupied cell is selected, that LED strobes for one second.
 
-## Set up your Verilog project
+## Testing and Simulation
 
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
+### Automated Tests
+The test suite in `test.py` verifies game logic, win conditions, and LED blinking patterns by sampling simulation outputs.
 
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
+```bash
+cd test
+make
+```
 
-## Enable GitHub actions to build the results page
+### Interactive Simulation
+The terminal-based simulation environment synchronizes with the system clock to allow for real-time interaction with the design.
 
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
+```bash
+cd test
+make interactive
+```
 
-## Resources
+Output:
+```
+   TIC-TAC-TOE LIVE SIM         KEY MAPPING
+==========================     =============
+         █ | · | ·               1 | 2 | 3
+        ---+---+---             ---+---+---
+         · | · | █               4 | 5 | 6
+        ---+---+---             ---+---+---
+         · | · | █               7 | 8 | 9
+==========================     =============
+ Status: Game Running                  
+ Controls: [1-9] Move, [R] Reset, [Q] or Ctrl+C to Quit
+```
 
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
+## Technical Specifications
+- **Architecture:** Synchronous digital design.
+- **Input Debouncing:** 5ms sample rate with 8-cycle history.
+- **Win Detection:** Parallel combinational logic checking all 8 win conditions.
+- **Clock:** Target 50MHz (ASIC); 1000Hz used for simulation.
 
-## What next?
+For pinout mapping and additional details, see [docs/info.md](docs/info.md).
 
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
+---
+
+## Tiny Tapeout
+Tiny Tapeout is an educational project for manufacturing digital designs on a real chip. Visit https://tinytapeout.com for details.
