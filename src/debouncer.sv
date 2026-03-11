@@ -20,7 +20,7 @@ module debouncer #(
 
   integer i;
 
-  always @(posedge clk) begin
+  always_ff @(posedge clk) begin
     if (!rst_n) begin
       tick_counter <= 0;
       btn_out <= 0;
@@ -33,12 +33,14 @@ module debouncer #(
 
         for (i = 0; i < NUM_BUTTONS; i = i + 1) begin
           // Shift the old history left, and bring in the new raw button state
-          history[i] = {history[i][HISTORY_SIZE-2:0], btn_in[i]};
+          logic [HISTORY_SIZE-1:0] next_history;
+          next_history = {history[i][HISTORY_SIZE-2:0], btn_in[i]};
+          history[i] <= next_history;
 
           // If the button has been HIGH for entire history
-          if (history[i] == {(HISTORY_SIZE) {1'b1}}) btn_out[i] <= 1'b1;  // Definitely Pressed
+          if (next_history == {(HISTORY_SIZE) {1'b1}}) btn_out[i] <= 1'b1;  // Definitely Pressed
           // If the button has been LOW for entire history
-          else if (history[i] == '0) btn_out[i] <= 1'b0;  // Definitely Released
+          else if (next_history == '0) btn_out[i] <= 1'b0;  // Definitely Released
         end
       end else begin
         tick_counter <= tick_counter + 1;
