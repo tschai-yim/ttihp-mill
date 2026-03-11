@@ -159,10 +159,25 @@ async def test_gl_smoke(dut):
     dut.ui_in.value = 0
     await ClockCycles(dut.clk, 10)
 
-    leds_after_p2 = (dut.uo_out.value.to_unsigned() & 0xFF) | ((dut.uio_out.value.to_unsigned() >> 7) << 8)
-    dut._log.info(f"LED state after P2 move: {bin(leds_after_p2)}")
-    # LED output should change after second move
-    assert leds_after_p1 != leds_after_p2, "LED output should change after second move"
+    # P2's LED blinks (not solid), so sample over a full blink period
+    # and check LED 0 is seen ON at least once.
+    # One blink period = 16 steps × 50ms/step = 800ms = 800 ticks
+    # At 10MHz: 800 ticks × 10,000 cycles/tick = 8,000,000 cycles
+    # At 1kHz: 800 cycles
+    sample_window = 8_000_000 if is_gl() else 800
+    led0_seen = False
+    for _ in range(0, sample_window, 1000 if is_gl() else 1):
+        leds = (dut.uo_out.value.to_unsigned() & 0xFF) | ((dut.uio_out.value.to_unsigned() >> 7) << 8)
+        if leds & (1 << 0):
+            led0_seen = True
+            break
+        await ClockCycles(dut.clk, 1000 if is_gl() else 1)
+    
+    assert led0_seen, "LED 0 should be active at some point after P2 move (P2 blinks)"
+    # Also verify P1's LED 4 is still on (P1 is solid)
+    leds_final = (dut.uo_out.value.to_unsigned() & 0xFF) | ((dut.uio_out.value.to_unsigned() >> 7) << 8)
+    dut._log.info(f"LED state after P2 move: {bin(leds_final)}")
+    assert leds_final & (1 << 4), "LED 4 should still be solid ON for P1"
 
     dut._log.info("Smoke Test Passed")
 
