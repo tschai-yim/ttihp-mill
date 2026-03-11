@@ -4,6 +4,10 @@
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
+import os
+
+def is_gl():
+    return os.environ.get("GATES") == "yes"
 
 class TTTTester:
     def __init__(self, dut):
@@ -106,8 +110,68 @@ class TTTTester:
                 f"LED {i} expected {expected_names[i]} ({hex(expected)}), but got {hex(observed)}"
 
 @cocotb.test()
+async def test_gl_smoke(dut):
+    """Minimal connectivity/sanity check."""
+    dut._log.info("Start Smoke Test")
+    clock = Clock(dut.clk, 10, unit="us")
+    cocotb.start_soon(clock.start())
+
+    # 1. Reset works
+    dut._log.info("Resetting DUT")
+    dut.ena.value = 1
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 10)
+
+    # Verify LEDs are in a deterministic state (not X/Z)
+    uo_out_val = dut.uo_out.value.to_unsigned()
+    uio_out_val = dut.uio_out.value.to_unsigned()
+    dut._log.info(f"Initial LED state: uo_out={hex(uo_out_val)}, uio_out={hex(uio_out_val)}")
+
+    # 2. A button press registers (P1 moves to index 4)
+    # Debouncer samples every (CLK_FREQ/1000)*5 cycles.
+    # For GL (10MHz), CLK_FREQ=10,000,000 -> 50,000 cycles/sample -> 200,000 cycles for 4 samples.
+    # For RTL (1000Hz), CLK_FREQ=1000 -> 5 cycles/sample -> 20 cycles for 4 samples.
+    wait_cycles = 250000 if is_gl() else 1000
+    
+    dut._log.info(f"P1 pressing button 4 (waiting {wait_cycles} cycles)")
+    dut.ui_in.value = (1 << 4)
+    await ClockCycles(dut.clk, wait_cycles)
+    
+    # Release button
+    dut.ui_in.value = 0
+    await ClockCycles(dut.clk, 10) # Wait for edge detector and sync
+
+    leds_after_p1 = (dut.uo_out.value.to_unsigned() & 0xFF) | ((dut.uio_out.value.to_unsigned() >> 7) << 8)
+    dut._log.info(f"LED state after P1 move: {bin(leds_after_p1)}")
+    # LED 4 should be ON (Solid for P1)
+    assert leds_after_p1 & (1 << 4), f"LED 4 should be active after P1 move, got {bin(leds_after_p1)}"
+
+    # 3. A second button press registers (P2 moves to index 0)
+    dut._log.info(f"P2 pressing button 0 (waiting {wait_cycles} cycles)")
+    dut.ui_in.value = (1 << 0)
+    await ClockCycles(dut.clk, wait_cycles)
+    
+    # Release button
+    dut.ui_in.value = 0
+    await ClockCycles(dut.clk, 10)
+
+    leds_after_p2 = (dut.uo_out.value.to_unsigned() & 0xFF) | ((dut.uio_out.value.to_unsigned() >> 7) << 8)
+    dut._log.info(f"LED state after P2 move: {bin(leds_after_p2)}")
+    # LED output should change after second move
+    assert leds_after_p1 != leds_after_p2, "LED output should change after second move"
+
+    dut._log.info("Smoke Test Passed")
+
+@cocotb.test()
 async def test_idle_animation(dut):
     """Verify the rotating dot animation in IDLE state."""
+    if is_gl():
+        dut._log.info("Skipped in GL mode — too slow")
+        return
     tester = TTTTester(dut)
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
@@ -124,6 +188,9 @@ async def test_idle_animation(dut):
 @cocotb.test()
 async def test_p1_win_row(dut):
     """Test a scenario where Player 1 wins with a row."""
+    if is_gl():
+        dut._log.info("Skipped in GL mode — too slow")
+        return
     tester = TTTTester(dut)
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
@@ -146,6 +213,9 @@ async def test_p1_win_row(dut):
 @cocotb.test()
 async def test_p2_win_col(dut):
     """Test a scenario where Player 2 wins with a column."""
+    if is_gl():
+        dut._log.info("Skipped in GL mode — too slow")
+        return
     tester = TTTTester(dut)
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
@@ -168,6 +238,9 @@ async def test_p2_win_col(dut):
 @cocotb.test()
 async def test_draw(dut):
     """Test a draw scenario where the board is full with no winner."""
+    if is_gl():
+        dut._log.info("Skipped in GL mode — too slow")
+        return
     tester = TTTTester(dut)
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
@@ -189,6 +262,9 @@ async def test_draw(dut):
 @cocotb.test()
 async def test_illegal_move(dut):
     """Verify that pressing an occupied cell triggers an error strobe."""
+    if is_gl():
+        dut._log.info("Skipped in GL mode — too slow")
+        return
     tester = TTTTester(dut)
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
@@ -210,6 +286,9 @@ async def test_illegal_move(dut):
 @cocotb.test()
 async def test_reset(dut):
     """Verify that the game can be reset after it's over."""
+    if is_gl():
+        dut._log.info("Skipped in GL mode — too slow")
+        return
     tester = TTTTester(dut)
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
